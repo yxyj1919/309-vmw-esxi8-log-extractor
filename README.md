@@ -24,6 +24,27 @@
 
 ## 安装
 
+### 系统依赖
+
+需要安装 wkhtmltopdf 用于生成 PDF 报告：
+
+- MacOS:
+  ```bash
+  brew install wkhtmltopdf
+  ```
+
+- Ubuntu/Debian:
+  ```bash
+  sudo apt-get install wkhtmltopdf
+  ```
+
+- CentOS/RHEL:
+  ```bash
+  sudo yum install wkhtmltopdf
+  ```
+
+### Python 依赖
+
 1. 克隆仓库
 ```
 bash

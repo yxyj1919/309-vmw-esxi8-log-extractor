@@ -21,7 +21,6 @@ numba>=0.56.4
 # 报告生成
 jinja2>=3.1.2
 pdfkit>=1.0.0
-wkhtmltopdf-pack>=0.12.3
 
 # 开发工具
 black>=22.3.0    # 代码格式化

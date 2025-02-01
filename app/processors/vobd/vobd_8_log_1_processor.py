@@ -94,6 +94,12 @@ class VOBD8LogProcessor:
             df_logs = pd.DataFrame(rows_list)
             print(f"成功解析 {len(df_logs)} 行数据")
 
+            # 在处理日志时添加调试信息
+            if 'Module' in df_logs.columns:
+                # 检查模块名中的特殊字符
+                for module in df_logs['Module'].unique():
+                    print(f"模块名: '{module}', 长度: {len(module)}")
+
             # 创建输出目录
             output_dir = os.path.join(self.upload_folder, 'output')
             os.makedirs(output_dir, exist_ok=True)

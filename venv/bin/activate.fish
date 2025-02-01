@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/changw/Library/CloudStorage/OneDrive-Personal/07-My_Projects/07-04-GitHub/308-vmw-esxi-log-extractor/venv"
+set -gx VIRTUAL_ENV "/Users/changw/Library/CloudStorage/OneDrive-Personal/07-MyProjects/07-04-GitHub/309-vmw-esxi8-log-extractor/venv"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH

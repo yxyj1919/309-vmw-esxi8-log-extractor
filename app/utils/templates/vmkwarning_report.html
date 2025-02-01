@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ log_type }} Log Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .section { margin: 20px 0; }
+        .plot { width: 100%; max-width: 800px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>{{ log_type }} Log Analysis Report</h1>
+    <p>Generated at: {{ timestamp }}</p>
+
+    <div class="section">
+        <h2>Overview</h2>
+        <table>
+            <tr>
+                <th>Total Logs</th>
+                <td>{{ stats.total_logs }}</td>
+            </tr>
+            <tr>
+                <th>Time Range</th>
+                <td>{{ stats.time_range.start }} to {{ stats.time_range.end }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Time Distribution</h2>
+        <div class="plot">{{ plots.time_dist | safe }}</div>
+    </div>
+
+    <div class="section">
+        <h2>Module Distribution</h2>
+        <div class="plot">{{ plots.module_dist | safe }}</div>
+    </div>
+
+    {% if stats.categories %}
+    <div class="section">
+        <h2>Category Analysis</h2>
+        {% for category, cat_stats in stats.categories.items() %}
+        <h3>{{ category }}</h3>
+        <table>
+            <tr>
+                <th>Total Logs</th>
+                <td>{{ cat_stats.total_logs }}</td>
+            </tr>
+        </table>
+        <div class="plot">{{ plots.categories[category].time_dist | safe }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</body>
+</html> 

@@ -8,7 +8,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV "/Users/changw/Library/CloudStorage/OneDrive-Personal/07-My_Projects/07-04-GitHub/308-vmw-esxi-log-extractor/venv"
+setenv VIRTUAL_ENV "/Users/changw/Library/CloudStorage/OneDrive-Personal/07-MyProjects/07-04-GitHub/309-vmw-esxi8-log-extractor/venv"
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/bin:$PATH"

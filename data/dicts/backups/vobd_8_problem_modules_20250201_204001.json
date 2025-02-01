@@ -11,8 +11,6 @@
     "esx.problem.vmfs.nfs.server.restored": "VMFS NFS服务器恢复问题",
     "vob.scsi.device.state.permanentloss": "SCSI设备永久丢失",
     "vob.scsi.device.state.permanentloss.noopens": "SCSI设备永久丢失且无打开操作",
-    "vob.scsi.scsipath.pathstate.dead": "SCSI设备永久丢失且无打开操作",
-    "esx.problem.hardware.tpm2.notis": "",
-    "esx.problem.clock.correction.changed": "",
-    "esx.problem.clock.correction.adjtime.lostsync": ""
+    "vob.scsi.scsipath.pathstate.dead": "SCSI路径状态死亡",
+    "esx.problem.clock.correction.adjtime.sync": "时钟同步修正问题"
 }

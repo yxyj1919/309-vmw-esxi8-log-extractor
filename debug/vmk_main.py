@@ -21,7 +21,7 @@ def main():
     input_log = "./logs/vmkernel-8-storage-ran.all"
     
     # === 步骤 1: 基础日志处理 ===
-    print("\n=== 步骤 1: 基础日志处理 ===")
+    print("\n=== Step 1: Basic Log Processing ===")
     processor = VMK8LogProcessor()  # 创建基础处理器实例
     df_processed = processor.process_log_file(input_log)  # 处理原始日志文件
     if df_processed.empty:
@@ -29,7 +29,7 @@ def main():
         return
     
     # === 步骤 2: 日志过滤 ===
-    print("\n=== 步骤 2: 日志过滤 ===")
+    print("\n=== Step 2: Log Filtering ===")
     filter = VMK8LogFilter()  # 创建过滤器实例
     df_filtered = filter.filter_logs(input_log)  # 过滤日志，只保留有模块信息的记录
     if df_filtered.empty:
@@ -37,7 +37,7 @@ def main():
         return
     
     # === 步骤 3: 按类别细化 ===
-    print("\n=== 步骤 3: 按类别细化 ===")
+    print("\n=== Step 3: Refine by Category ===")
     refiner = VMK8LogRefiner()  # 创建细化处理器实例
     
     # 在output目录中查找过滤后的文件
@@ -56,11 +56,11 @@ def main():
     category_dfs = refiner.process_by_category(input_csv)
     
     # === 打印最终的处理统计信息 ===
-    print("\n=== 处理完成 ===")
+    print("\n=== Processing Completed ===")
     # 显示每个步骤处理的记录数
-    print(f"1. 基础处理: {len(df_processed)} 条记录")
-    print(f"2. 过滤处理: {len(df_filtered)} 条记录")
-    print("\n3. 细化处理结果:")
+    print(f"1. Basic Processing: {len(df_processed)} records")
+    print(f"2. Filtering: {len(df_filtered)} records")
+    print("\n3. Refine by Category Result:")
     # 显示每个类别的记录数
     for category, df in category_dfs.items():
         if not df.empty:

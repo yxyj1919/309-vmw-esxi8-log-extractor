@@ -2,6 +2,8 @@ import streamlit as st
 import sys
 from pathlib import Path
 import pandas as pd
+import os
+from datetime import datetime
 
 # 添加项目根目录到Python路径
 root_dir = Path(__file__).parent.parent.parent
@@ -10,185 +12,272 @@ sys.path.append(str(root_dir))
 from app.processors.vmk.vmk_8_log_1_processor import VMK8LogProcessor
 from app.processors.vmk.vmk_8_log_2_filter import VMK8LogFilter
 from app.processors.vmk.vmk_8_log_3_refine import VMK8LogRefiner
+from app.processors.vmk.vmk_8_modules_manager import VMKModulesManager
 
 def add_daily_stats(df):
     """
-    添加每日统计图表
+    Add daily statistics chart
     
-    功能：
-    1. 解析时间戳
-    2. 按日期统计日志数量
-    3. 生成折线图和数据表格
+    Features:
+    1. Parse timestamps
+    2. Count logs by date
+    3. Generate line chart and data table
     
-    参数:
-        df (pd.DataFrame): 包含Time列的数据框
+    Args:
+        df (pd.DataFrame): DataFrame containing Time column
     """
     if 'Time' in df.columns:
         try:
-            # 使用ISO格式解析时间
+            # Parse time in ISO format
             df['Time'] = pd.to_datetime(df['Time'], format='ISO8601')
-            # 提取日期部分
+            # Extract date part
             df['Date'] = df['Time'].dt.date
-            # 按日期统计
+            # Group by date
             daily_counts = df.groupby('Date').size().reset_index()
             daily_counts.columns = ['Date', 'Count']
             
-            # 显示每日统计图表
-            st.subheader('每日日志数量统计')
+            # Display daily statistics chart
+            st.subheader('Daily Log Count Statistics')
             st.line_chart(daily_counts.set_index('Date'))
             
-            # 显示具体数据
-            st.subheader('每日统计详情')
+            # Display detailed data
+            st.subheader('Daily Statistics Details')
             st.dataframe(daily_counts, use_container_width=True, height=200)
         except Exception as e:
-            st.error(f'处理时间数据时出错: {str(e)}')
+            st.error(f'Error processing time data: {str(e)}')
 
 def show(file_path):
     """
-    显示VMKernel日志分析界面
+    Display VMKernel log analysis interface
     
-    处理流程：
-    1. 基础处理：解析原始日志
-    2. 过滤处理：提取模块信息
-    3. 细化处理：按类别分类
+    Process flow:
+    1. Basic processing: Parse raw logs
+    2. Filter processing: Extract module information
+    3. Refinement: Categorize by type
     
-    参数:
-        file_path (str): 日志文件路径
+    Args:
+        file_path (str): Log file path
     """
-    st.header('VMKernel日志分析')
+    # Store debug mode state in Session State
+    if 'debug_mode' not in st.session_state:
+        st.session_state.debug_mode = False
+        st.session_state.debug_clicks = 0
     
-    # === 步骤 1: 基础日志处理 ===
-    with st.expander("步骤 1: 基础处理", expanded=True):
+    # Create a title with hidden debug trigger
+    col1, col2 = st.columns([0.97, 0.03])
+    with col1:
+        st.header('vmkernel Log Analysis')
+    with col2:
+        if st.button("⚙️", key="debug_trigger", help="System Settings"):
+            st.session_state.debug_clicks += 1
+            if st.session_state.debug_clicks >= 3:
+                st.session_state.debug_mode = True
+                st.session_state.debug_clicks = 0
+                st.rerun()
+    
+    # Display exit debug mode button
+    if st.session_state.debug_mode:
+        if st.sidebar.button("Exit Debug Mode"):
+            st.session_state.debug_mode = False
+            st.rerun()
+
+    # === Step 1: Basic Log Processing ===
+    with st.expander("Step 1: Basic Processing", expanded=True):
         processor = VMK8LogProcessor()
         df_processed = processor.process_log_file(file_path)
         if not df_processed.empty:
-            st.success(f"基础处理完成，共 {len(df_processed)} 条记录")
+            st.success(f"Basic processing completed, {len(df_processed)} records in total")
             
-            # === 显示数据过滤选项 ===
-            st.subheader('过滤选项')
+            # === Display Filter Options ===
+            st.subheader('Filter Options')
             col1, col2 = st.columns(2)
-            # 日志级别过滤（vmkalert/vmkwarning/vmkernel）
+            # Log level filter
             with col1:
                 selected_level = st.multiselect(
-                    '日志级别',
+                    'Log Level',
                     df_processed['LogLevel'].unique().tolist()
                 )
-            # 日志标签过滤（Al/Wa/In）
+            # Log tag filter
             with col2:
                 selected_tag = st.multiselect(
-                    '日志标签',
+                    'Log Tag',
                     df_processed['LogTag'].unique().tolist()
                 )
             
-            # === 应用过滤条件 ===
+            # === Apply Filters ===
             filtered_df = df_processed
             if selected_level:
                 filtered_df = filtered_df[filtered_df['LogLevel'].isin(selected_level)]
             if selected_tag:
                 filtered_df = filtered_df[filtered_df['LogTag'].isin(selected_tag)]
             
-            # === 显示数据表格 ===
-            st.subheader('日志数据')
+            # === Display Data Table ===
+            st.subheader('Log Data')
             st.dataframe(filtered_df, use_container_width=True, height=600)
             
-            # === 显示统计信息 ===
-            st.subheader('统计信息')
+            # === Display Statistics ===
+            st.subheader('Statistics')
             col1, col2 = st.columns(2)
             with col1:
-                st.write('日志级别分布')
+                st.write('Log Level Distribution')
                 st.write(filtered_df['LogLevel'].value_counts())
             with col2:
-                st.write('日志标签分布')
+                st.write('Log Tag Distribution')
                 st.write(filtered_df['LogTag'].value_counts())
             
-            # === 添加每日统计图表 ===
+            # === Add Daily Statistics Chart ===
             add_daily_stats(filtered_df)
         else:
-            st.error("基础处理失败")
+            st.error("Basic processing failed")
             return
     
-    # === 步骤 2: 日志过滤 ===
-    with st.expander("步骤 2: 日志过滤", expanded=True):
-        filter = VMK8LogFilter()
-        # 直接使用DataFrame进行过滤，而不是重新读取文件
-        df_filtered = filter.filter_dataframe(df_processed)
-        if not df_filtered.empty:
-            st.success(f"过滤完成，保留 {len(df_filtered)} 条记录")
+    # === Add Step 2 Toggle ===
+    enable_step2 = st.checkbox('Enable Step 2: Log Filtering', value=False)
+    
+    # === Step 2: Log Filtering ===
+    if enable_step2:
+        with st.expander("Step 2: Log Filtering", expanded=True):
+            filter = VMK8LogFilter()
+            df_filtered = filter.filter_dataframe(df_processed)
+            if not df_filtered.empty:
+                st.success(f"Filtering completed, {len(df_filtered)} records retained")
+                
+                # === Module Filter Options ===
+                selected_modules = st.multiselect(
+                    'Select Modules',
+                    df_filtered['Module'].unique().tolist()
+                )
+                
+                # Apply module filter
+                if selected_modules:
+                    df_filtered = df_filtered[df_filtered['Module'].isin(selected_modules)]
+                
+                # === Display Filtered Data ===
+                st.subheader('Log Data')
+                st.dataframe(df_filtered, use_container_width=True, height=600)
+                
+                # === Display Module Distribution ===
+                st.subheader('Module Distribution')
+                st.bar_chart(df_filtered['Module'].value_counts())
+                
+                # === Add Daily Statistics ===
+                add_daily_stats(df_filtered)
+            else:
+                st.error("Filter processing failed")
+                return
+    else:
+        df_filtered = df_processed
+    
+    # === Add Step 3 Toggle ===
+    enable_step3 = st.checkbox('Enable Step 3: Category Refinement', value=False)
+    
+    # === Step 3: Category Refinement ===
+    if enable_step3:
+        with st.expander("Step 3: Category Refinement", expanded=True):
+            refiner = VMK8LogRefiner()
+            category_dfs = refiner.process_dataframe(df_filtered)
             
-            # === 模块过滤选项 ===
-            selected_modules = st.multiselect(
-                '选择模块',
-                df_filtered['Module'].unique().tolist()
+            # === Category Selection ===
+            categories = ['STORAGE', 'NETWORK', 'SYSTEM', 'VSAN', 'VM', 'UNMATCHED']
+            category = st.selectbox(
+                'Select Category',
+                categories,
+                key='category_selector'
             )
             
-            # 应用模块过滤
-            if selected_modules:
-                df_filtered = df_filtered[df_filtered['Module'].isin(selected_modules)]
+            # === Process Selected Category Data ===
+            if category_dfs:
+                if category in category_dfs:
+                    df = category_dfs[category]
+                    if not df.empty:
+                        st.success(f'{category} category total records: {len(df)}')
+                        
+                        # === Time Range Selection ===
+                        if 'Time' in df.columns:
+                            df['Time'] = pd.to_datetime(df['Time'])
+                            min_time = df['Time'].min()
+                            max_time = df['Time'].max()
+                            
+                            # Convert to readable time format
+                            date_min = min_time.strftime('%Y-%m-%d %H:%M:%S')
+                            date_max = max_time.strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            # Time range input
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                start_date = st.text_input('Start Time', date_min)
+                            with col2:
+                                end_date = st.text_input('End Time', date_max)
+                            
+                            try:
+                                # Apply time range filter
+                                start_dt = pd.to_datetime(start_date)
+                                end_dt = pd.to_datetime(end_date)
+                                df = df[(df['Time'] >= start_dt) & (df['Time'] <= end_dt)]
+                                st.write(f'Records in selected time range: {len(df)}')
+                            except Exception as e:
+                                st.error('Please enter valid time format: YYYY-MM-DD HH:MM:SS')
+                        
+                        # === Display Categorized Data ===
+                        st.subheader('Log Data')
+                        st.dataframe(df, use_container_width=True, height=600)
+                        
+                        # === Add Download Button for Complete Logs ===
+                        if 'CompleteLog' in df.columns:
+                            st.subheader('Download Filtered Logs')
+                            # Prepare logs for download
+                            logs_text = '\n'.join(df['CompleteLog'].tolist())
+                            st.download_button(
+                                label="Download Raw Logs",
+                                data=logs_text,
+                                file_name=f"vmkernel_{category.lower()}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
+                                mime="text/plain"
+                            )
+                        
+                        # === Display Module Distribution ===
+                        if len(df) > 0:
+                            st.subheader('Module Distribution')
+                            st.bar_chart(df['Module'].value_counts())
+                            
+                            # === Add Daily Statistics ===
+                            add_daily_stats(df)
+                    else:
+                        st.warning(f'No data in {category} category')
+                else:
+                    st.warning(f'No data found for {category} category')
+            else:
+                st.error("Category processing failed")
+
+    # Add module management functionality
+    if st.session_state.debug_mode:
+        with st.expander("Module Management", expanded=False):
+            st.info("🛠️ Debug Mode Activated")
+            manager = VMKModulesManager()
             
-            # === 显示过滤后的数据 ===
-            st.subheader('日志数据')
-            st.dataframe(df_filtered, use_container_width=True, height=600)
+            # Display current modules
+            modules = manager.get_all_modules()
+            st.write("Currently Defined Modules:")
+            for category, module_list in modules.items():
+                st.subheader(category)
+                for module in module_list:
+                    st.text(f"- {module}")
             
-            # === 显示模块分布 ===
-            st.subheader('模块分布')
-            st.bar_chart(df_filtered['Module'].value_counts())
+            # Add new module
+            st.subheader("Add New Module")
+            category = st.selectbox("Select Category", list(modules.keys()))
+            new_module = st.text_input("Module Name")
+            if st.button("Add"):
+                if manager.add_module(category, new_module):
+                    st.success("Added Successfully")
+                else:
+                    st.error("Add Failed")
             
-            # === 添加每日统计 ===
-            add_daily_stats(df_filtered)
-        else:
-            st.error("过滤处理失败")
-            return
-    
-    # === 步骤 3: 按类别细化 ===
-    with st.expander("步骤 3: 按类别细化", expanded=True):
-        refiner = VMK8LogRefiner()
-        # 直接处理DataFrame
-        category_dfs = refiner.process_dataframe(df_filtered)
-        
-        # === 类别选择 ===
-        category = st.selectbox(
-            '选择类别',
-            ['STORAGE', 'NETWORK', 'SYSTEM', 'VSAN', 'VM', 'UNMATCHED']
-        )
-        
-        # === 处理选定类别的数据 ===
-        if category in category_dfs and not category_dfs[category].empty:
-            df = category_dfs[category]
-            st.write(f'{category} 类别总记录数: {len(df)}')
-            
-            # === 时间范围选择 ===
-            if 'Time' in df.columns:
-                df['Time'] = pd.to_datetime(df['Time'])
-                min_time = df['Time'].min()
-                max_time = df['Time'].max()
-                
-                # 转换为易读的时间格式
-                date_min = min_time.strftime('%Y-%m-%d %H:%M:%S')
-                date_max = max_time.strftime('%Y-%m-%d %H:%M:%S')
-                
-                # 时间范围输入
-                col1, col2 = st.columns(2)
-                with col1:
-                    start_date = st.text_input('开始时间', date_min)
-                with col2:
-                    end_date = st.text_input('结束时间', date_max)
-                
-                try:
-                    # 应用时间范围过滤
-                    start_dt = pd.to_datetime(start_date)
-                    end_dt = pd.to_datetime(end_date)
-                    df = df[(df['Time'] >= start_dt) & (df['Time'] <= end_dt)]
-                    st.write(f'选定时间范围内的记录数: {len(df)}')
-                except:
-                    st.error('请输入有效的时间格式：YYYY-MM-DD HH:MM:SS')
-            
-            # === 显示分类后的数据 ===
-            st.subheader('日志数据')
-            st.dataframe(df, use_container_width=True, height=600)
-            
-            # === 显示模块分布 ===
-            st.subheader('模块分布')
-            st.bar_chart(df['Module'].value_counts())
-            
-            # === 添加每日统计 ===
-            add_daily_stats(df) 
+            # Export functionality
+            st.subheader("Export Modules")
+            if st.button("Export to CSV"):
+                csv_path = os.path.join(manager.root_dir, 'data', 'dicts', 'exports', 
+                                      f'vmk_modules_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
+                if manager.export_to_csv(csv_path):
+                    st.success(f"Exported to: {csv_path}")
+                else:
+                    st.error("Export Failed") 

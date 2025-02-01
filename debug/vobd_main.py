@@ -1,4 +1,4 @@
-from processors.vobd.vobd_8_log_2_filter import VOBD8LogFilter
+from app.processors.vobd.vobd_8_log_2_filter import VOBD8LogFilter
 from app.processors.vobd.vobd_8_log_1_processor import VOBD8LogProcessor
 import os
 from datetime import datetime

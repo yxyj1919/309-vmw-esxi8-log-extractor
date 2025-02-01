@@ -1,3 +1,18 @@
+"""
+VMKWarning Log Analysis Page
+
+这个模块提供了 VMware ESXi 系统警告日志分析的页面界面。
+主要功能：
+1. 文件上传和验证
+2. 调用 vmkw_view 进行警告日志分析和展示
+3. 处理用户交互和错误情况
+
+特点：
+- 专注于系统警告信息的分析
+- 支持按警告级别（WARNING/ALERT）过滤
+- 提供警告信息的统计和趋势分析
+"""
+
 import streamlit as st
 import os
 import sys

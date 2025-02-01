@@ -1,5 +1,7 @@
 # VMware ESXi Log Analyzer
 
+Version: v0.1.0
+
 一个用于分析 VMware ESXi 系统日志的工具，支持处理 vmkernel、vmkwarning 和 vobd 日志。
 
 ## 功能特点
@@ -46,24 +48,20 @@
 ### Python 依赖
 
 1. 克隆仓库
-```
-bash
+```bash
 git clone [repository-url]
 cd vmw-esxi-log-extractor
 ```
 2. 安装依赖
-```
-bash
+```bash
 pip install -r requirements.txt
 ```
 3. 运行
-```
-bash
+```bash
 streamlit run app/Home.py
 ```
 4. 调试模式运行（生成详细处理文件）
-```
-bash
+```bash
 VMK_DEBUG=true streamlit run app/Home.py
 ```
 
@@ -106,4 +104,5 @@ VMK_DEBUG=true streamlit run app/Home.py
 
 ## 联系方式
 
-Bug Report: chang.wang@broadcom.com
+Bug Report: chang.wang@broadcom.com  
+Version: v0.1.0

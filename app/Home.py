@@ -7,8 +7,8 @@ st.set_page_config(
 )
 
 def main():
-    st.title("VMware ESXi Log Analyzer")
-    st.write("Welcome to VMware ESXi Log Analyzer. Please select a log type from the sidebar to begin analysis.")
+    st.title("ESXi Log Analyzer (v0.1.0)")
+    st.write("Welcome to ESXi Log Analyzer. Please select a log type from the sidebar to begin analysis.")
     
     col1, col2, col3 = st.columns(3)
     

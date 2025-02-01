@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from app.processors.vmk.vmk_8_log_1_processor import VMK8LogProcessor
 from app.processors.vmk.vmk_8_log_2_filter import VMK8LogFilter
-from app.processors.vmk.vmk_8_log_3_refine import VMK8LogRefiner
+from app.processors.vmk.vmk_8_log_3_refiner import VMK8LogRefiner
 
 # 设置页面布局为宽屏模式
 st.set_page_config(

@@ -1,3 +1,19 @@
+"""
+VMkernel Log 过滤器
+
+这个模块负责对基础处理后的 VMkernel 日志进行过滤。
+主要功能：
+1. 过滤出包含有效模块信息的日志
+2. 支持自定义过滤条件
+3. 生成过滤后的数据报告
+
+处理流程：
+1. 接收基础处理后的日志数据
+2. 应用过滤条件
+3. 生成过滤统计
+4. 输出过滤后的结果
+"""
+
 import pandas as pd
 from app.processors.vmk.vmk_8_log_1_processor import VMK8LogProcessor
 import os
@@ -5,23 +21,30 @@ from datetime import datetime
 
 class VMK8LogFilter:
     """
-    VMware内核日志过滤器
-    功能：
-    1. 过滤出包含模块信息的日志
-    2. 支持自定义模块列表过滤
-    3. 生成过滤后的CSV报告
+    VMkernel 日志过滤器类
+    
+    主要职责：
+    - 过滤无效或不完整的日志记录
+    - 提取和验证模块信息
+    - 生成过滤统计报告
+    - 保存过滤后的结果
+    
+    属性：
+    - processor: 日志处理器实例
+    - output_columns: 输出数据列配置
     """
+    
     def __init__(self):
+        """初始化过滤器，设置基本配置"""
         # 初始化日志处理器
         self.processor = VMK8LogProcessor()
         
-        # 默认的输出列，添加AlarmLevel
+        # 定义输出列及其顺序
         self.output_columns = [
             'Time',          # 时间戳
             'LogTag',        # 日志标签
             'LogLevel',      # 日志级别
             'CPU',          # CPU信息
-            'AlarmLevel',    # 警告级别（ALERT/WARNING）
             'Module',        # 模块名
             'Log',          # 主要日志内容
             'CompleteLog'    # 完整原始日志
@@ -31,11 +54,11 @@ class VMK8LogFilter:
         """
         过滤日志文件，只保留包含模块信息的记录
         
-        参数:
+        参数：
             input_file (str): 输入日志文件路径
-            output_file (str, optional): 输出CSV文件路径，如果不指定则使用默认命名
+            output_file (str, optional): 输出CSV文件路径
             
-        返回:
+        返回：
             pd.DataFrame: 过滤后的数据框
         """
         try:
@@ -49,13 +72,16 @@ class VMK8LogFilter:
             # 过滤出Module不为空的记录
             filtered_df = df[df['Module'].notna() & (df['Module'] != '')]
             
+            # 重新排列列顺序
+            filtered_df = filtered_df[self.output_columns]
+            
             # 只在调试模式或明确指定输出文件时保存
             if output_file or os.getenv('VMK_DEBUG') == 'true':
                 if not output_file:
                     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                     output_dir = 'output'
                     os.makedirs(output_dir, exist_ok=True)
-                    output_file = os.path.join(output_dir, f'{timestamp}-vmk-basic-2-filtered.csv')
+                    output_file = os.path.join(output_dir, f'{timestamp}-vmk-2-filtered.csv')
                 
                 filtered_df.to_csv(output_file, index=False, encoding='utf-8')
                 print(f"过滤后的日志已保存到: {output_file}")
@@ -80,7 +106,15 @@ class VMK8LogFilter:
             return pd.DataFrame()
 
     def filter_dataframe(self, df):
-        """直接处理DataFrame而不是从文件读取"""
+        """
+        直接处理DataFrame而不是从文件读取
+        
+        参数：
+            df (pd.DataFrame): 输入数据框
+            
+        返回：
+            pd.DataFrame: 过滤后的数据框
+        """
         try:
             if df.empty:
                 return pd.DataFrame()

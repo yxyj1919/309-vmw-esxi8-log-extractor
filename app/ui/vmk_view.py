@@ -11,7 +11,7 @@ sys.path.append(str(root_dir))
 
 from app.processors.vmk.vmk_8_log_1_processor import VMK8LogProcessor
 from app.processors.vmk.vmk_8_log_2_filter import VMK8LogFilter
-from app.processors.vmk.vmk_8_log_3_refine import VMK8LogRefiner
+from app.processors.vmk.vmk_8_log_3_refiner import VMK8LogRefiner
 from app.processors.vmk.vmk_8_modules_manager import VMKModulesManager
 
 def add_daily_stats(df):

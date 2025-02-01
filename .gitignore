@@ -1,2 +1,5 @@
 logs/
-output/
+output/*
+
+# 不忽略 output 目录本身（保留空目录）
+!output/.gitkeep

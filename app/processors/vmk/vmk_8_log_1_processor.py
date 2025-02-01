@@ -63,6 +63,9 @@ class VMK8LogProcessor:
         # 例如：cpu63:2099984 opID=be121f44)SchedVsi:
         self.vmkernel_cpu_module_pattern2 = r'(cpu\d+:\d+\s+opID=[a-f0-9]+\))([^:]+):'
 
+        # 添加更简单的模块提取模式
+        self.simple_module_pattern = r'([^:]+):'
+
     def process_log_line(self, line):
         """
         处理单行日志，根据日志级别使用不同的处理方式
@@ -137,23 +140,20 @@ class VMK8LogProcessor:
 
     def _process_kernel_log(self, remaining, result):
         """处理普通内核日志的辅助方法"""
-        # 先尝试匹配场景2（更具体的模式）
-        cpu_module_match = re.match(self.vmkernel_cpu_module_pattern2, remaining)
-        if cpu_module_match:
-            result['CPU'] = cpu_module_match.group(1)
-            result['Module'] = cpu_module_match.group(2)
-            result['Log'] = remaining[cpu_module_match.end():].strip()
-        else:
-            # 如果不是场景2，尝试匹配场景1
-            cpu_module_match = re.match(self.vmkernel_cpu_module_pattern1, remaining)
-            if cpu_module_match:
-                result['CPU'] = cpu_module_match.group(1)
-                if cpu_module_match.group(2):
-                    result['Module'] = cpu_module_match.group(2)
-                result['Log'] = remaining[cpu_module_match.end():].strip()
-            else:
-                # 如果两种场景都不匹配，保存为普通日志
-                result['Log'] = remaining
+        # 先处理CPU信息
+        cpu_match = re.match(r'cpu\d+:\d+(?:\s+opID=[a-f0-9]+)?\)', remaining)
+        if cpu_match:
+            result['CPU'] = cpu_match.group()
+            remaining = remaining[cpu_match.end():].strip()
+        
+        # 尝试提取模块名（使用更简单的方式）
+        module_match = re.match(self.simple_module_pattern, remaining)
+        if module_match:
+            result['Module'] = module_match.group(1)
+            remaining = remaining[module_match.end():].strip()
+        
+        # 保存剩余内容为日志消息
+        result['Log'] = remaining
 
     def process_log_file(self, filepath):
         """处理日志文件并返回DataFrame"""
@@ -170,18 +170,35 @@ class VMK8LogProcessor:
             # 创建DataFrame
             df = pd.DataFrame(log_entries)
             
-            # 生成输出文件
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_dir = 'output'
-            os.makedirs(output_dir, exist_ok=True)
-            output_file = os.path.join(output_dir, f'{timestamp}-vmk-basic-1-processed.csv')
+            # 使用更灵活的时间解析
+            if 'Time' in df.columns:
+                df['Time'] = pd.to_datetime(
+                    df['Time'],
+                    format='mixed',
+                    utc=True
+                )
             
-            # 保存为CSV文件
-            df.to_csv(output_file, index=False, encoding='utf-8')
-            print(f"基础日志处理结果已保存到: {output_file}")
+            # 只在调试模式下保存中间文件
+            if os.getenv('VMK_DEBUG') == 'true':
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                output_dir = 'output'
+                os.makedirs(output_dir, exist_ok=True)
+                output_file = os.path.join(output_dir, f'{timestamp}-vmk-basic-1-processed.csv')
+                df.to_csv(output_file, index=False, encoding='utf-8')
+                print(f"调试模式：基础日志处理结果已保存到: {output_file}")
             
             return df
             
         except Exception as e:
             print(f"处理日志文件时发生错误: {str(e)}")
             return pd.DataFrame()
+
+    def extract_module(self, log_text):
+        """Extract module name from log text"""
+        # 确保能识别 UNMAP6
+        unmap_pattern = r'UNMAP\d*'
+        match = re.search(unmap_pattern, log_text, re.IGNORECASE)
+        if match:
+            return match.group().upper()  # 返回大写形式
+        
+        # ... 其他模块提取逻辑

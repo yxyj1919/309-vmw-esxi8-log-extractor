@@ -117,6 +117,17 @@ class VMK8LogRefiner:
                 for module, count in unmatched_modules.items():
                     print(f"  {module}: {count}条记录")
 
+            # 只在调试模式下保存分类结果
+            if os.getenv('VMK_DEBUG') == 'true':
+                for category, df in category_dfs.items():
+                    if not df.empty:
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        output_dir = 'output'
+                        os.makedirs(output_dir, exist_ok=True)
+                        output_file = os.path.join(output_dir, 
+                                                 f'{timestamp}-vmk-basic-3-refined-{category.lower()}.csv')
+                        df.to_csv(output_file, index=False, encoding='utf-8')
+
             return category_dfs
 
         except Exception as e:
@@ -124,39 +135,60 @@ class VMK8LogRefiner:
             return {}
 
     def process_dataframe(self, df):
-        """直接处理DataFrame而不是从文件读取"""
-        try:
-            if df.empty:
-                return {}
-            
-            category_dfs = {}
-            # 为每个类别创建过滤后的DataFrame
-            for category, modules in self.module_categories.items():
-                # 创建一个空的过滤条件
-                mask = pd.Series(False, index=df.index)
+        """Process DataFrame and categorize logs by module"""
+        if df is None or df.empty or 'Module' not in df.columns:
+            print("Debug: DataFrame is empty or missing Module column")
+            return None
+
+        result = {
+            'STORAGE': pd.DataFrame(),
+            'NETWORK': pd.DataFrame(),
+            'SYSTEM': pd.DataFrame(),
+            'VSAN': pd.DataFrame(),
+            'VM': pd.DataFrame(),
+            'UNMATCHED': pd.DataFrame()
+        }
+
+        # 创建一个副本避免 SettingWithCopyWarning
+        df = df.copy()
+        
+        # 调试输出
+        print("\nDebug - Available Modules:")
+        print(df['Module'].unique())
+        print("\nDebug - Module Categories:")
+        print(self.module_categories)
+
+        # Process each category
+        matched_mask = pd.Series(False, index=df.index)
+        
+        for category, modules in self.module_categories.items():
+            # 使用更灵活的匹配逻辑
+            mask = pd.Series(False, index=df.index)
+            for module in modules:
+                # 调试输出
+                print(f"\nDebug - Matching module {module}")
                 
-                # 对每个模块名进行匹配
-                for module in modules:
-                    # 使用字符串包含操作而不是精确匹配
-                    mask = mask | df['Module'].str.contains(module, regex=False, na=False)
+                # 不区分大小写的匹配
+                current_mask = df['Module'].str.contains(
+                    module, 
+                    case=False,  # 不区分大小写
+                    regex=False, # 使用普通字符串匹配
+                    na=False
+                )
+                mask = mask | current_mask
                 
-                # 使用组合的过滤条件
-                filtered_df = df[mask]
-                category_dfs[category] = filtered_df
-                
-            # 添加未匹配的记录
-            matched_mask = pd.Series(False, index=df.index)
-            for category_df in category_dfs.values():
-                if not category_df.empty:
-                    matched_mask = matched_mask | df.index.isin(category_df.index)
+                # 调试输出匹配结果
+                if current_mask.any():
+                    print(f"Found matches for {module}:")
+                    print(df[current_mask]['Module'].unique())
             
-            category_dfs['UNMATCHED'] = df[~matched_mask]
-            
-            return category_dfs
-            
-        except Exception as e:
-            print(f"处理数据时发生错误: {str(e)}")
-            return {}
+            result[category] = df[mask].copy()
+            matched_mask = matched_mask | mask
+
+        # Add remaining unmatched logs
+        result['UNMATCHED'] = df[~matched_mask].copy()
+
+        return result
 
 def main():
     """测试函数"""

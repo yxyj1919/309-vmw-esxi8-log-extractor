@@ -19,32 +19,24 @@ def is_debug_mode():
            os.path.exists(os.path.join(root_dir, '.debug'))
 
 def add_daily_stats(df):
-    """
-    Add daily statistics chart
-    
-    Features:
-    1. Parse timestamps
-    2. Count logs by date
-    3. Generate line chart and data table
-    
-    Args:
-        df (pd.DataFrame): DataFrame containing Time column
-    """
+    """Add daily statistics chart"""
     if 'Time' in df.columns and not df.empty:
         try:
-            # Parse time in ISO format
-            df['Time'] = pd.to_datetime(df['Time'])
-            # Extract date part
-            df['Date'] = df['Time'].dt.date
-            # Group by date
-            daily_counts = df.groupby('Date').size().reset_index()
+            # 创建一个明确的副本
+            df_stats = df.copy()
+            # 在副本上进行操作
+            df_stats['Time'] = pd.to_datetime(df_stats['Time'])
+            df_stats['Date'] = df_stats['Time'].dt.date
+            
+            # 使用处理后的数据
+            daily_counts = df_stats.groupby('Date').size().reset_index()
             daily_counts.columns = ['Date', 'Count']
             
-            # Display daily statistics chart
+            # 显示图表
             st.subheader('Daily Log Count Statistics')
             st.line_chart(daily_counts.set_index('Date'))
             
-            # Display detailed data
+            # 显示详细数据
             st.subheader('Daily Statistics Details')
             st.dataframe(daily_counts, use_container_width=True, height=200)
         except Exception as e:

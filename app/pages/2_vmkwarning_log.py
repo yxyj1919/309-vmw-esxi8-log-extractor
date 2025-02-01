@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import sys
 from pathlib import Path
+import pandas as pd
 
 # Add project root directory to Python path
 root_dir = Path(__file__).parent.parent.parent
@@ -42,4 +43,28 @@ if uploaded_file is not None:
     else:
         st.error('Please upload a valid vmkwarning log file (must start with "vmkwarning" and end with .log or .all)')
 else:
-    st.info('Please upload a vmkwarning log file for analysis') 
+    st.info('Please upload a vmkwarning log file for analysis')
+
+def add_daily_stats(df):
+    """Add daily statistics chart"""
+    if 'Time' in df.columns:
+        try:
+            # 创建一个明确的副本
+            df_stats = df.copy()
+            # 在副本上进行操作
+            df_stats['Time'] = pd.to_datetime(df_stats['Time'])
+            df_stats['Date'] = df_stats['Time'].dt.date
+            
+            # 使用处理后的数据
+            daily_counts = df_stats.groupby('Date').size().reset_index()
+            daily_counts.columns = ['Date', 'Count']
+            
+            # 显示图表
+            st.subheader('Daily Log Count Statistics')
+            st.line_chart(daily_counts.set_index('Date'))
+            
+            # 显示详细数据
+            st.subheader('Daily Statistics Details')
+            st.dataframe(daily_counts, use_container_width=True, height=200)
+        except Exception as e:
+            st.error(f'Error processing time data: {str(e)}') 

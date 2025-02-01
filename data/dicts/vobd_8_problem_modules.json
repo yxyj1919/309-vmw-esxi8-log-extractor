@@ -14,5 +14,10 @@
     "vob.scsi.scsipath.pathstate.dead": "SCSI设备永久丢失且无打开操作",
     "esx.problem.hardware.tpm2.notis": "",
     "esx.problem.clock.correction.changed": "",
-    "esx.problem.clock.correction.adjtime.lostsync": ""
+    "esx.problem.clock.correction.adjtime.lostsync": "",
+    "esx.problem.dhclient.lease.none": "",
+    "esx.problem.storage.apd.start": "",
+    "esx.problem.vmfs.nfs.server.disconnect": "",
+    "esx.problem.net.connectivity.lost": "",
+    "esx.problem.storage.apd.timeout": ""
 }

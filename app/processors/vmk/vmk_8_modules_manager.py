@@ -13,6 +13,15 @@ class VMKModulesManager:
         self.backup_dir = os.path.join(self.root_dir, 'data', 'dicts', 'backups')
         os.makedirs(self.backup_dir, exist_ok=True)
 
+        self.modules = {
+            'STORAGE': [
+                'UNMAP',  # 需要确保这个存在
+                'UNMAP6',  # 可能需要添加这个
+                # ... 其他存储模块
+            ],
+            # ... 其他类别
+        }
+
     def load_modules(self):
         """加载模块定义"""
         try:
@@ -54,6 +63,8 @@ class VMKModulesManager:
         """添加新的模块"""
         modules = self.load_modules()
         if category in modules:
+            # 转换为大写以保持一致性
+            module_name = module_name.upper()
             if module_name not in modules[category]:
                 modules[category].append(module_name)
                 modules[category].sort()  # 保持列表有序

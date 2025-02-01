@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import pandas as pd
+from datetime import datetime
 
 class VMKW8LogRefiner:
     """VMKWarning log refiner for categorizing logs by module"""
@@ -55,5 +56,19 @@ class VMKW8LogRefiner:
         # Add remaining unmatched logs to UNMATCHED category
         if not df.empty:
             result['UNMATCHED'] = df
+
+        # 只在调试模式下保存分类结果
+        if os.getenv('VMK_DEBUG') == 'true':
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_dir = 'output'
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # 保存分类结果
+            for category, category_df in result.items():
+                if not category_df.empty:
+                    output_file = os.path.join(output_dir, 
+                                             f'{timestamp}-vmkw-2-refined-{category.lower()}.csv')
+                    category_df.to_csv(output_file, index=False, encoding='utf-8')
+                    print(f"调试模式：{category} 类别结果已保存到: {output_file}")
 
         return result 

@@ -49,19 +49,16 @@ class VMK8LogFilter:
             # 过滤出Module不为空的记录
             filtered_df = df[df['Module'].notna() & (df['Module'] != '')]
             
-            # 重新排列列顺序
-            filtered_df = filtered_df[self.output_columns]
-            
-            # 如果没有指定输出文件，使用默认命名格式
-            if not output_file:
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                output_dir = 'output'
-                os.makedirs(output_dir, exist_ok=True)
-                output_file = os.path.join(output_dir, f'{timestamp}-vmk-basic-2-filtered.csv')
-            
-            # 保存过滤结果
-            filtered_df.to_csv(output_file, index=False, encoding='utf-8')
-            print(f"过滤后的日志已保存到: {output_file}")
+            # 只在调试模式或明确指定输出文件时保存
+            if output_file or os.getenv('VMK_DEBUG') == 'true':
+                if not output_file:
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    output_dir = 'output'
+                    os.makedirs(output_dir, exist_ok=True)
+                    output_file = os.path.join(output_dir, f'{timestamp}-vmk-basic-2-filtered.csv')
+                
+                filtered_df.to_csv(output_file, index=False, encoding='utf-8')
+                print(f"过滤后的日志已保存到: {output_file}")
             
             # 打印统计信息
             print(f"\n过滤统计:")

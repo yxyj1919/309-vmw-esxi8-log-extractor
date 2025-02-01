@@ -23,6 +23,19 @@ def main():
     with col3:
         st.subheader('vobd log analyzer')
         st.info('Analyze system logs related to system boot and diagnosis.')
+    
+    # 添加页脚信息
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style="position: fixed; bottom: 0; right: 0; padding: 10px;">
+            <p style="color: gray; font-size: 0.8em;">
+                Bug Report: <a href="mailto:chang.wang@broadcom.com">chang.wang@broadcom.com</a>
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if __name__ == '__main__':
     main() 

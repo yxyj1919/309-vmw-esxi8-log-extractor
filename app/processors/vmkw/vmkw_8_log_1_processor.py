@@ -123,18 +123,10 @@ class VMKW8LogProcessor:
         return result
 
     def process_log_file(self, filepath):
-        """
-        Process log file and return DataFrame
-        
-        Args:
-            filepath (str): Path to log file
-            
-        Returns:
-            pd.DataFrame: DataFrame containing processed log data
-        """
-        log_entries = []
-        
+        """处理日志文件并返回DataFrame"""
         try:
+            log_entries = []
+            
             with open(filepath, 'r', encoding='utf-8') as log_file:
                 for line in log_file:
                     if line.strip():  # Skip empty lines
@@ -151,31 +143,51 @@ class VMKW8LogProcessor:
             # Create DataFrame
             df = pd.DataFrame(log_entries)
             
-            # Ensure all required columns exist
-            required_columns = ['Time', 'LogTag', 'LogLevel', 'CPU', 
-                              'AlarmLevel', 'Module', 'Log', 'CompleteLog']
-            for col in required_columns:
-                if col not in df.columns:
-                    df[col] = ''
+            # 使用更灵活的时间解析
+            if 'Time' in df.columns:
+                df['Time'] = pd.to_datetime(
+                    df['Time'],
+                    format='mixed',
+                    utc=True
+                )
             
-            # Arrange columns in specified order
-            df = df[required_columns]
-            
-            # Generate output filename and path
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_dir = 'output'
-            os.makedirs(output_dir, exist_ok=True)
-            
-            # Build output file path
-            output_file = os.path.join(output_dir, f'{timestamp}-vmkw-1-processed.csv')
-            
-            # Save to CSV file
-            df.to_csv(output_file, index=False, encoding='utf-8')
-            print(f"Log successfully saved to: {output_file}")
+            # 只在调试模式下保存中间文件
+            if os.getenv('VMK_DEBUG') == 'true':
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                output_dir = 'output'
+                os.makedirs(output_dir, exist_ok=True)
+                output_file = os.path.join(output_dir, f'{timestamp}-vmkw-1-processed.csv')
+                df.to_csv(output_file, index=False, encoding='utf-8')
+                print(f"调试模式：基础日志处理结果已保存到: {output_file}")
             
             return df
             
         except Exception as e:
-            print(f"Error processing log file: {str(e)}")
-            return pd.DataFrame(columns=['Time', 'LogTag', 'LogLevel', 'CPU', 
-                                       'AlarmLevel', 'Module', 'Log', 'CompleteLog']) 
+            print(f"处理日志文件时发生错误: {str(e)}")
+            return pd.DataFrame()
+
+    def _process_warning_log(self, remaining, result):
+        """处理警告类日志的辅助方法"""
+        # 1. 匹配CPU信息
+        cpu_match = re.match(self.group4_cpu_pattern, remaining)
+        if cpu_match:
+            result['CPU'] = cpu_match.group(1)
+            remaining = remaining[cpu_match.end():].strip()
+        
+        # 2. 匹配警告级别
+        alarm_match = re.search(self.group5_alarm_level_pattern, remaining)
+        if alarm_match:
+            result['AlarmLevel'] = alarm_match.group(1)
+            remaining = remaining[alarm_match.end():].strip()
+        
+        # 3. 匹配模块名 - 这里直接从冒号前提取
+        module_match = re.match(r'([^:]+):', remaining)
+        if module_match:
+            result['Module'] = module_match.group(1)
+            remaining = remaining[module_match.end():].strip()
+        
+        # 4. 匹配日志内容
+        result['Log'] = remaining.strip()
+        result['CompleteLog'] = remaining.strip()
+        
+        return result 

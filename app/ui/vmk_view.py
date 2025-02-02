@@ -81,8 +81,11 @@ def show(file_path):
         # 在调试模式下设置环境变量
         if st.session_state.debug_mode:
             os.environ['VMK_DEBUG'] = 'true'
+            # 默认关闭详细日志
+            os.environ['VMK_VERBOSE'] = 'false'
         else:
             os.environ['VMK_DEBUG'] = 'false'
+            os.environ['VMK_VERBOSE'] = 'false'
 
         # 在处理开始前清理旧文件
         if not st.session_state.get('debug_mode', False):  # 使用 get 方法更安全
@@ -108,11 +111,46 @@ def show(file_path):
 
         # === Step 1: Basic Log Processing ===
         with st.expander("Step 1: Basic Processing", expanded=True):
-            processor = VMK8LogProcessor()
-            df_processed = processor.process_log_file(file_path)
+            # 添加进度条
+            with st.spinner('Processing log file...'):
+                processor = VMK8LogProcessor()
+                df_processed = processor.process_log_file(file_path)
+
             if not df_processed.empty:
-                st.success(f"Basic processing completed, {len(df_processed)} records in total")
-                
+                # 使用缓存来存储过滤后的数据
+                @st.cache_data(ttl=3600)  # 1小时缓存
+                def filter_data(df, tags, levels):
+                    filtered = df.copy()
+                    if tags:
+                        filtered = filtered[filtered['LogTag'].isin(tags)]
+                    if levels:
+                        filtered = filtered[filtered['LogLevel'].isin(levels)]
+                    return filtered
+
+                # 分批显示数据
+                def display_dataframe(df, page_size=1000):
+                    total_rows = len(df)
+                    pages = (total_rows - 1) // page_size + 1
+                    
+                    page = st.number_input(
+                        'Page', 
+                        min_value=1, 
+                        max_value=pages, 
+                        value=1,
+                        help=f"Total pages: {pages}"
+                    )
+                    
+                    start_idx = (page - 1) * page_size
+                    end_idx = min(start_idx + page_size, total_rows)
+                    
+                    st.dataframe(
+                        df.iloc[start_idx:end_idx],
+                        use_container_width=True,
+                        height=600
+                    )
+                    
+                    st.write(f"Showing rows {start_idx + 1} to {end_idx} of {total_rows}")
+
                 # === Display Filter Options ===
                 st.subheader('Filter Options')
                 col1, col2 = st.columns(2)
@@ -139,16 +177,15 @@ def show(file_path):
                         help="Select one or more log levels"
                     )
                 
-                # === Apply Filters ===
-                filtered_df = df_processed
-                if selected_tag:  # 先应用标签过滤
-                    filtered_df = filtered_df[filtered_df['LogTag'].isin(selected_tag)]
-                if selected_level:  # 再应用级别过滤
-                    filtered_df = filtered_df[filtered_df['LogLevel'].isin(selected_level)]
-                
-                # === Display Data Table ===
-                st.subheader('Log Data')
-                st.dataframe(filtered_df, use_container_width=True, height=600)
+                # 使用过滤函数
+                filtered_df = filter_data(
+                    df_processed,
+                    selected_tag,
+                    selected_level
+                )
+
+                # 分页显示数据
+                display_dataframe(filtered_df)
                 
                 # === Display Statistics ===
                 st.subheader('Statistics')
@@ -367,6 +404,11 @@ def show(file_path):
                         st.success(f"Successfully added {success_count} out of {total} modules")
                     else:
                         st.error(f"Failed to add any modules out of {total}")
+
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        if st.session_state.debug_mode:
+            st.exception(e)
 
     finally:
         # 在处理结束后清理临时文件（非调试模式）

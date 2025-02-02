@@ -78,37 +78,35 @@ class VMK8LogProcessor:
             'CompleteLog': line_str  # 完整原始日志
         }
         
-        # 匹配基本组件
-        basic_pattern = (
-            f'^{self.time_pattern}\\s+'    # 时间戳
-            f'{self.log_tag_pattern}\\s+'  # 日志标签
-            f'{self.log_level_pattern}'    # 日志级别
-        )
-        
-        match = re.match(basic_pattern, line_str)
-        if match:
-            # 提取基本信息
-            time, log_tag, log_level = match.groups()
-            # 处理日志级别，移除可能的冒号
-            log_level = log_level.rstrip(':')
-            result.update({
-                'Time': time,
-                'LogTag': log_tag,
-                'LogLevel': log_level
-            })
+        try:
+            # 匹配基本组件
+            basic_pattern = (
+                f'^{self.time_pattern}\\s+'    # 时间戳
+                f'{self.log_tag_pattern}\\s+'  # 日志标签
+                f'{self.log_level_pattern}'    # 日志级别
+            )
             
-            # 调试输出
+            basic_match = re.match(basic_pattern, line_str)
+            if basic_match:
+                # 提取基本信息
+                result['Time'] = basic_match.group(1)
+                result['LogTag'] = basic_match.group(2)
+                result['LogLevel'] = basic_match.group(3).rstrip(':')
+                
+                # 只在调试模式下且设置了详细日志时输出匹配信息
+                if os.getenv('VMK_DEBUG') == 'true' and os.getenv('VMK_VERBOSE') == 'true':
+                    print(f"LogLevel matched: {result['LogLevel']}")
+                    print(f"LogTag matched: {result['LogTag']}")
+                
+                # 处理剩余部分
+                remaining = line_str[basic_match.end():].strip()
+                self._process_remaining(remaining, result)
+                
+                return result
+        except Exception as e:
             if os.getenv('VMK_DEBUG') == 'true':
-                print(f"LogTag matched: {log_tag}")
-                print(f"LogLevel matched: {log_level}")
-            
-            # 处理剩余部分
-            remaining = line_str[match.end():].strip()
-            self._process_remaining(remaining, result)
-            
-            return result
-        
-        return None
+                print(f"Error processing line: {str(e)}")
+            return None
 
     def _process_remaining(self, remaining, result):
         """

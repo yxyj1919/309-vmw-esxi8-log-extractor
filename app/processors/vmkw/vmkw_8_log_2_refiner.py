@@ -6,25 +6,89 @@ import os
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
+from app.processors.vmk.vmk_8_modules_manager import VMKModulesManager
 
 class VMKW8LogRefiner:
-    """VMKWarning log refiner for categorizing logs by module"""
+    """VMKWarning 日志分类处理器"""
     
     def __init__(self):
-        """Initialize refiner with module definitions"""
-        try:
-            # Get project root directory
-            root_dir = Path(__file__).parent.parent.parent.parent
-            json_path = os.path.join(root_dir, 'data', 'dicts', 'vmk_8_mod.json')
-            
-            # Load module definitions
-            with open(json_path, 'r', encoding='utf-8') as f:
-                self.module_categories = json.load(f)
-        except Exception as e:
-            print(f"Error loading module definitions: {str(e)}")
-            self.module_categories = {}
+        """初始化分类处理器"""
+        # 加载模块定义
+        manager = VMKModulesManager()
+        self.module_categories = manager.get_all_modules()
 
     def process_dataframe(self, df):
+        """处理数据框并按模块分类"""
+        if df is None or df.empty or 'Module' not in df.columns:
+            print("输入数据为空或缺少 Module 列")
+            return None
+
+        # 初始化结果字典
+        result = {
+            'STORAGE': pd.DataFrame(),
+            'NETWORK': pd.DataFrame(),
+            'SYSTEM': pd.DataFrame(),
+            'VSAN': pd.DataFrame(),
+            'VM': pd.DataFrame(),
+            'UNMATCHED': pd.DataFrame()
+        }
+
+        try:
+            # 调试输出：显示所有待分类的模块
+            if os.getenv('VMK_DEBUG') == 'true':
+                print("\n=== 待分类的模块 ===")
+                print(df['Module'].unique())
+                print("\n=== 模块定义 ===")
+                for cat, mods in self.module_categories.items():
+                    print(f"\n{cat}:")
+                    print(mods)
+
+            # 处理每个分类
+            matched_mask = pd.Series(False, index=df.index)
+            
+            for category, modules in self.module_categories.items():
+                mask = pd.Series(False, index=df.index)
+                for module in modules:
+                    # 使用 contains 匹配，因为模块名可能是部分匹配
+                    current_mask = df['Module'].str.contains(
+                        module,
+                        case=True,  # 保持大小写敏感
+                        regex=False, # 使用普通字符串匹配
+                        na=False    # 处理空值
+                    )
+                    
+                    # 调试输出：显示每次匹配的结果
+                    if os.getenv('VMK_DEBUG') == 'true' and current_mask.any():
+                        print(f"\n=== 匹配模块: {module} -> {category} ===")
+                        matched_modules = df[current_mask]['Module'].unique()
+                        print(f"匹配到的模块: {matched_modules}")
+                        print(f"匹配到的记录数: {current_mask.sum()}")
+                    
+                    mask = mask | current_mask
+                
+                result[category] = df[mask].copy()
+                matched_mask = matched_mask | mask
+
+            # 添加未匹配的记录
+            result['UNMATCHED'] = df[~matched_mask].copy()
+            
+            # 调试输出：显示分类结果
+            if os.getenv('VMK_DEBUG') == 'true':
+                print("\n=== 分类结果 ===")
+                for category, category_df in result.items():
+                    if not category_df.empty:
+                        print(f"\n{category} 类别:")
+                        print(f"记录数: {len(category_df)}")
+                        print("模块列表:")
+                        print(category_df['Module'].unique())
+
+            return result
+            
+        except Exception as e:
+            print(f"处理数据时发生错误: {str(e)}")
+            return None
+
+    def process_dataframe_old(self, df):
         """
         Process DataFrame and categorize logs by module
         

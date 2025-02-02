@@ -46,19 +46,37 @@ class VMKModulesManager:
         2. 加载模块定义文件
         3. 初始化模块配置
         """
+        # 获取项目根目录
         self.root_dir = Path(__file__).parent.parent.parent.parent
         self.module_file = os.path.join(self.root_dir, 'data', 'dicts', 'vmk_8_mod.json')
         self.backup_dir = os.path.join(self.root_dir, 'data', 'dicts', 'backups')
         os.makedirs(self.backup_dir, exist_ok=True)
 
-        self.modules = {
+        # 默认的模块类别
+        self.default_categories = {
             'STORAGE': [
-                'UNMAP',  # 需要确保这个存在
-                'UNMAP6',  # 可能需要添加这个
-                # ... 其他存储模块
+                'NMP', 'ScsiPath', 'Scsi', 'VMFS', 'LVM', 'StorageDevice',
+                'StorageDeviceIO', 'StorageDM', 'UNMAP', 'UNMAP6'
             ],
-            # ... 其他类别
+            'NETWORK': [
+                'NetPort', 'NetStack', 'NetPkt', 'NetDev', 'VMXNET3'
+            ],
+            'SYSTEM': [
+                'SystemMem', 'SystemBus', 'SystemCPU', 'SystemIO'
+            ],
+            'VSAN': [
+                'VSAN', 'VSANHealth', 'VSANPerf'
+            ],
+            'VM': [
+                'VMkernel', 'VMkernelBoot', 'VMkernelInit'
+            ]
         }
+
+        # 加载模块定义，如果失败则使用默认配置
+        self.modules = self._load_modules()
+        if not self.modules:
+            self.modules = self.default_categories.copy()
+            self._save_modules()  # 保存默认配置到文件
 
     def _load_modules(self):
         """
@@ -229,4 +247,40 @@ class VMKModulesManager:
             return self._save_modules()
         except Exception as e:
             print(f"从CSV导入失败: {str(e)}")
-            return False 
+            return False
+
+    def add_modules_batch(self, category, module_names):
+        """
+        批量添加模块到指定类别
+        
+        参数：
+            category (str): 模块类别
+            module_names (list): 模块名称列表
+            
+        返回：
+            tuple: (成功添加的数量, 总数量)
+        """
+        try:
+            if category not in self.modules:
+                print(f"无效的类别: {category}")
+                return (0, len(module_names))
+            
+            success_count = 0
+            for module_name in module_names:
+                module_name = module_name.strip()
+                if module_name and module_name not in self.modules[category]:
+                    self.modules[category].append(module_name)
+                    success_count += 1
+            
+            # 对模块列表进行排序
+            self.modules[category].sort()
+            
+            # 只在有变更时保存
+            if success_count > 0:
+                self._save_modules()
+            
+            return (success_count, len(module_names))
+            
+        except Exception as e:
+            print(f"批量添加模块时发生错误: {str(e)}")
+            return (0, len(module_names)) 

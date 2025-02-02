@@ -195,7 +195,24 @@ def show(file_path):
         if enable_step2:
             with st.expander("Step 2: Category Refinement", expanded=True):
                 refiner = VMKW8LogRefiner()
+                
+                # 添加调试信息显示区域
+                if st.session_state.debug_mode:
+                    debug_container = st.empty()
+                
                 category_dfs = refiner.process_dataframe(filtered_df)
+                
+                # 在调试模式下显示分类信息
+                if st.session_state.debug_mode and category_dfs:
+                    with debug_container:
+                        st.subheader("Debug Information")
+                        st.text("分类结果统计：")
+                        for category, df in category_dfs.items():
+                            st.text(f"{category}: {len(df)} records")
+                            if not df.empty:
+                                st.text("Modules:")
+                                st.text(df['Module'].unique())
+                        st.markdown("---")
                 
                 # === Category Selection ===
                 categories = ['STORAGE', 'NETWORK', 'SYSTEM', 'VSAN', 'VM', 'UNMATCHED']

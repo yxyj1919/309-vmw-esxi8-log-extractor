@@ -1,0 +1,55 @@
+{
+    "STORAGE": [
+        "CBT", "FDS", "FS3Stats", "FSS", "Fil3", "Fil6Slab", "HBX", "HPP", "Hbr", 
+        "LVM", "NFS", "NFS41", "NMP", "NVMEDEV", "NVMEIO", "NVMEMGMT", "NVMEMOD", 
+        "NVMEPSA", "NVMEVSI", "NVMFDEV", "NVMFNET", "NVMFVSI", "NvmeAdapter", 
+        "NvmeDevice", "NvmeDeviceIO", "NvmeDiscover", "NvmeFds", "NvmeUtil", 
+        "PB3", "PsaStorEvents", "PsaStorPeriodicProbe", "ScsiAdapter", 
+        "ScsiAdapterVsi", "ScsiClaimrule", "ScsiNpiv", "ScsiPsaDriver", 
+        "ScsiUid", "ScsiVsi", "SerialDev", "StorPathVsi", "StorageApdHandler", 
+        "StorageDevice", "StorageDeviceIO", "StorageDeviceVsi", "StorageFPIN", 
+        "StorageFds", "StorageMidlayer", "StoragePoll", "StoragePsaDriver", 
+        "StorageTaskMgmt", "Unmap6", "VMWARE SCSI Id", "Vol3"
+    ],
+    "NETWORK": [
+        "<NMLX_ERR>", "<NMLX_INF>", "DVFilter", "DVSDev", "Mirror.cswitch", 
+        "Net", "NetDPC", "NetDVS", "NetHealthcheck", "NetPort", "NetPortset", 
+        "NetSched", "NetVsi", "NetqueueBal", "Tcpip", "Tcpip_Vmk", "Uplink", 
+        "VRDMA", "bnxtnet", "cswitch", "dpu-ctl", "dvfilter-generic-fastpath", 
+        "etherswitch", "netioc", "netschedHClk", "ntg3"
+    ],
+    "SYSTEM": [
+        "APEI", "Activating Jumpstart Plugins", "Admission failure in path", 
+        "ApeiHEST", "Boot", "Boot complete", "BootModule", "CDP", "CDPThrottled", 
+        "Chipset", "Config", "Cow", "CpuSched", "Crypto", "DCF", "DMA", "Device", 
+        "Elf", "FTCpt", "GlobalTimer", "HPET", "Helper", "IOAPIC", "IOResource", 
+        "ISA", "Init", "Ipfix", "Lldp", "MCAIntel", "Mod", "NBFT Enumerate status", 
+        "NRandom", "NRandomHwrng", "NTPClock", "NUMASched", "NVDManagement", 
+        "P2MUpdate", "PCI", "PCIE", "PCIEDPC", "PCIEHP", "PCIQuirks", "PCIVPD", 
+        "Power", "RCI", "ResAff", "Sched", "SchedVsi", "Scaled cluster limit", 
+        "SecureBoot", "SwapObj", "System memory", "SystemInfo", "SysInitTable", 
+        "TTY", "Tdm", "User", "UserObj", "UserParam", "Util", "VC", "VDFM", 
+        "VMK init", "VMKAPICore", "VMKAPIMOD", "VMKAcpi", "VMK_ACPI", "VMK_PCI", 
+        "VMKStats", "VProbe", "VisorFS", "VisorFSObj", "VisorFSRam", "VisorFSTar", 
+        "VmkAccess", "Vmkapiv", "World", "cryptoModuleLog", "iodm", "keypersist", 
+        "nvme_pcie", "nvmetcp", "tpmDriver", "vmkibft", "vmkusb", "vmw_ahci", 
+        "xhci host controller"
+    ],
+    "VSAN": [
+        "CMMDS", "Cluster limit for a shared witness", 
+        "Component limit for a data node", "Component limit for a shared witness", 
+        "Component limit for a single-cluster witness", 
+        "Component limit in this VSAN node for each cluster", 
+        "Max associations supported in this VSAN node", 
+        "Max components supported in this VSAN node", "RDT"
+    ],
+    "VM": [
+        "Migrate", "MigrateNet", "SESparse", "SVM", "VSCSI", "VSCSIFilter", 
+        "VSCSIFs", "VSCSIWp", "VmMemNvme", "VmMemXfer", "VMotion", 
+        "VMotionMemPreCopy", "VMotionRecv", "VMotionSend", "VMotionServer", 
+        "VMotionServerNetwork", "VMotionStream", "VMotionUtil", "VmfsSparse", 
+        "Vmxnet3"
+    ]
+}
+
+

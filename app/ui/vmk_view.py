@@ -78,6 +78,12 @@ def show(file_path):
         st.session_state.debug_clicks = 0
 
     try:
+        # 在调试模式下设置环境变量
+        if st.session_state.debug_mode:
+            os.environ['VMK_DEBUG'] = 'true'
+        else:
+            os.environ['VMK_DEBUG'] = 'false'
+
         # 在处理开始前清理旧文件
         if not st.session_state.get('debug_mode', False):  # 使用 get 方法更安全
             cleanup_output_files()
@@ -110,25 +116,35 @@ def show(file_path):
                 # === Display Filter Options ===
                 st.subheader('Filter Options')
                 col1, col2 = st.columns(2)
-                # Log level filter
+
+                # Log tag filter (移到左侧)
                 with col1:
-                    selected_level = st.multiselect(
-                        'Log Level',
-                        df_processed['LogLevel'].unique().tolist()
-                    )
-                # Log tag filter
-                with col2:
+                    # 获取所有唯一的日志标签
+                    log_tags = sorted(df_processed['LogTag'].unique().tolist())
                     selected_tag = st.multiselect(
                         'Log Tag',
-                        df_processed['LogTag'].unique().tolist()
+                        options=log_tags,
+                        default=log_tags,  # 默认选中所有标签
+                        help="Select one or more log tags"
+                    )
+
+                # Log level filter (移到右侧)
+                with col2:
+                    # 获取所有唯一的日志级别
+                    log_levels = sorted(df_processed['LogLevel'].unique().tolist())
+                    selected_level = st.multiselect(
+                        'Log Level',
+                        options=log_levels,
+                        default=log_levels,  # 默认选中所有级别
+                        help="Select one or more log levels"
                     )
                 
                 # === Apply Filters ===
                 filtered_df = df_processed
-                if selected_level:
-                    filtered_df = filtered_df[filtered_df['LogLevel'].isin(selected_level)]
-                if selected_tag:
+                if selected_tag:  # 先应用标签过滤
                     filtered_df = filtered_df[filtered_df['LogTag'].isin(selected_tag)]
+                if selected_level:  # 再应用级别过滤
+                    filtered_df = filtered_df[filtered_df['LogLevel'].isin(selected_level)]
                 
                 # === Display Data Table ===
                 st.subheader('Log Data')
@@ -194,7 +210,24 @@ def show(file_path):
         if enable_step3:
             with st.expander("Step 3: Category Refinement", expanded=True):
                 refiner = VMK8LogRefiner()
+                
+                # 添加调试信息显示区域
+                if st.session_state.debug_mode:
+                    debug_container = st.empty()
+                    
                 category_dfs = refiner.process_dataframe(df_filtered)
+                
+                # 在调试模式下显示分类信息
+                if st.session_state.debug_mode and category_dfs:
+                    with debug_container:
+                        st.subheader("Debug Information")
+                        st.text("分类结果统计：")
+                        for category, df in category_dfs.items():
+                            st.text(f"{category}: {len(df)} records")
+                            if not df.empty:
+                                st.text("Modules:")
+                                st.text(df['Module'].unique())
+                        st.markdown("---")
                 
                 # === Category Selection ===
                 categories = ['STORAGE', 'NETWORK', 'SYSTEM', 'VSAN', 'VM', 'UNMATCHED']
@@ -211,46 +244,54 @@ def show(file_path):
                         if not df.empty:
                             st.success(f'{category} category total records: {len(df)}')
                             
-                            # === Time Range Selection ===
-                            if 'Time' in df.columns:
-                                # 确保时间列是 datetime 类型
-                                if not pd.api.types.is_datetime64_any_dtype(df['Time']):
-                                    df['Time'] = pd.to_datetime(df['Time'], utc=True)
-                                
-                                min_time = df['Time'].min()
-                                max_time = df['Time'].max()
-                                
-                                # 转换为本地时间显示
-                                date_min = min_time.tz_localize(None).strftime('%Y-%m-%d %H:%M:%S')
-                                date_max = max_time.tz_localize(None).strftime('%Y-%m-%d %H:%M:%S')
-                                
-                                # 使用日期时间选择器而不是文本输入
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    start_date = st.text_input('Start Time (UTC)', date_min)
-                                with col2:
-                                    end_date = st.text_input('End Time (UTC)', date_max)
-                                
-                                try:
-                                    # 转换输入的时间为 UTC
-                                    start_dt = pd.to_datetime(start_date).tz_localize('UTC')
-                                    end_dt = pd.to_datetime(end_date).tz_localize('UTC')
-                                    
-                                    # 应用时间范围过滤
-                                    mask = (df['Time'] >= start_dt) & (df['Time'] <= end_dt)
-                                    df = df[mask]
-                                    
-                                    if len(df) > 0:
-                                        st.write(f'Records in selected time range: {len(df)}')
-                                    else:
-                                        st.warning('No records found in the selected time range')
-                                    
-                                except Exception as e:
-                                    st.error(f'Please enter valid time format: YYYY-MM-DD HH:MM:SS ({str(e)})')
-                            
                             # === Display Categorized Data ===
                             st.subheader('Log Data')
-                            st.dataframe(df, use_container_width=True, height=600)
+                            try:
+                                # 确保所有列都能正确显示
+                                st.dataframe(
+                                    data=df.copy(),  # 使用数据的副本
+                                    use_container_width=True,
+                                    height=600,
+                                    column_config={
+                                        'Time': st.column_config.DatetimeColumn(
+                                            'Time',
+                                            format='YYYY-MM-DD HH:mm:ss.SSS',
+                                            help='Log timestamp'
+                                        ),
+                                        'LogTag': st.column_config.TextColumn(
+                                            'Log Tag',
+                                            width='medium',
+                                            help='Log tag information'
+                                        ),
+                                        'LogLevel': st.column_config.TextColumn(
+                                            'Log Level',
+                                            width='small',
+                                            help='Log level'
+                                        ),
+                                        'CPU': st.column_config.TextColumn(
+                                            'CPU',
+                                            width='medium',
+                                            help='CPU information'
+                                        ),
+                                        'Module': st.column_config.TextColumn(
+                                            'Module',
+                                            width='medium',
+                                            help='Module name'
+                                        ),
+                                        'Log': st.column_config.TextColumn(
+                                            'Log Message',
+                                            width='large',
+                                            help='Log message content'
+                                        ),
+                                        'CompleteLog': st.column_config.TextColumn(
+                                            'Complete Log',
+                                            width='large',
+                                            help='Complete log entry'
+                                        )
+                                    }
+                                )
+                            except Exception as e:
+                                st.error(f"Error displaying data: {str(e)}")
                             
                             # === Add Download Button for Complete Logs ===
                             if 'CompleteLog' in df.columns:
@@ -280,37 +321,52 @@ def show(file_path):
 
         # Add module management functionality
         if st.session_state.debug_mode:
-            with st.expander("Module Management", expanded=False):
-                st.info("🛠️ Debug Mode Activated")
-                manager = VMKModulesManager()
-                
-                # Display current modules
-                modules = manager.get_all_modules()
-                st.write("Currently Defined Modules:")
-                for category, module_list in modules.items():
-                    st.subheader(category)
-                    for module in module_list:
-                        st.text(f"- {module}")
-                
-                # Add new module
-                st.subheader("Add New Module")
+            st.markdown("---")
+            st.subheader("🛠️ Module Management")
+            manager = VMKModulesManager()
+            
+            # 显示当前模块
+            modules = manager.get_all_modules()
+            st.write("Currently Defined Modules:")
+            
+            # 使用选项卡而不是嵌套的expander
+            module_tabs = st.tabs(list(modules.keys()))
+            for tab, category in zip(module_tabs, modules.keys()):
+                with tab:
+                    module_list = modules[category]
+                    st.text(f"Total: {len(module_list)} modules")
+                    if module_list:
+                        st.code('\n'.join(f"- {module}" for module in sorted(module_list)))
+            
+            # 添加新模块（支持批量）
+            st.markdown("---")
+            st.subheader("Add New Modules")
+            col1, col2 = st.columns(2)
+            with col1:
                 category = st.selectbox("Select Category", list(modules.keys()))
+            with col2:
+                input_type = st.radio("Input Type", ["Single", "Batch"], horizontal=True)
+            
+            if input_type == "Single":
                 new_module = st.text_input("Module Name")
-                if st.button("Add"):
+                if st.button("Add Single Module"):
                     if manager.add_module(category, new_module):
                         st.success("Added Successfully")
                     else:
                         st.error("Add Failed")
-                
-                # Export functionality
-                st.subheader("Export Modules")
-                if st.button("Export to CSV"):
-                    csv_path = os.path.join(manager.root_dir, 'data', 'dicts', 'exports', 
-                                          f'vmk_modules_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
-                    if manager.export_to_csv(csv_path):
-                        st.success(f"Exported to: {csv_path}")
+            else:
+                new_modules = st.text_area(
+                    "Module Names (one per line)",
+                    height=150,
+                    help="Enter module names, one per line"
+                )
+                if st.button("Add Multiple Modules"):
+                    module_list = [m.strip() for m in new_modules.split('\n') if m.strip()]
+                    success_count, total = manager.add_modules_batch(category, module_list)
+                    if success_count > 0:
+                        st.success(f"Successfully added {success_count} out of {total} modules")
                     else:
-                        st.error("Export Failed")
+                        st.error(f"Failed to add any modules out of {total}")
 
     finally:
         # 在处理结束后清理临时文件（非调试模式）

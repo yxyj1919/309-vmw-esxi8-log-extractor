@@ -79,43 +79,56 @@ class VMK8LogRefiner:
             'UNMATCHED': pd.DataFrame()
         }
 
-        # 处理每个分类
-        matched_mask = pd.Series(False, index=df.index)
-        
-        for category, modules in self.module_categories.items():
-            # 使用更灵活的匹配逻辑
-            mask = pd.Series(False, index=df.index)
-            for module in modules:
-                # 不区分大小写的匹配
-                current_mask = df['Module'].str.contains(
-                    module, 
-                    case=False,  # 不区分大小写
-                    regex=False, # 使用普通字符串匹配
-                    na=False
-                )
-                mask = mask | current_mask
+        try:
+            # 调试输出：显示所有待分类的模块
+            if os.getenv('VMK_DEBUG') == 'true':
+                print("\n待分类的模块:")
+                print(df['Module'].unique())
+
+            # 处理每个分类
+            matched_mask = pd.Series(False, index=df.index)
             
-            result[category] = df[mask].copy()
-            matched_mask = matched_mask | mask
+            for category, modules in self.module_categories.items():
+                mask = pd.Series(False, index=df.index)
+                for module in modules:
+                    # 使用 contains 匹配，因为模块名可能是部分匹配
+                    current_mask = df['Module'].str.contains(
+                        module,
+                        case=True,  # 保持大小写敏感
+                        regex=False, # 使用普通字符串匹配
+                        na=False    # 处理空值
+                    )
+                    
+                    # 调试输出：显示每次匹配的结果
+                    if os.getenv('VMK_DEBUG') == 'true' and current_mask.any():
+                        print(f"\n尝试匹配 {module} 到 {category}:")
+                        matched_modules = df[current_mask]['Module'].unique()
+                        print(f"匹配到的模块: {matched_modules}")
+                        print(f"匹配到的记录数: {current_mask.sum()}")
+                    
+                    mask = mask | current_mask
+                
+                result[category] = df[mask].copy()
+                matched_mask = matched_mask | mask
 
-        # 添加未匹配的记录
-        result['UNMATCHED'] = df[~matched_mask].copy()
-
-        # 调试模式下保存分类结果
-        if os.getenv('VMK_DEBUG') == 'true':
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_dir = 'output'
-            os.makedirs(output_dir, exist_ok=True)
+            # 添加未匹配的记录
+            result['UNMATCHED'] = df[~matched_mask].copy()
             
-            # 保存各类别结果
-            for category, category_df in result.items():
-                if not category_df.empty:
-                    output_file = os.path.join(output_dir, 
-                                             f'{timestamp}-vmk-3-refined-{category.lower()}.csv')
-                    category_df.to_csv(output_file, index=False, encoding='utf-8')
-                    print(f"调试模式：{category} 类别结果已保存到: {output_file}")
+            # 调试输出：显示分类结果
+            if os.getenv('VMK_DEBUG') == 'true':
+                print("\n分类结果:")
+                for category, category_df in result.items():
+                    if not category_df.empty:
+                        print(f"\n{category} 类别:")
+                        print(f"记录数: {len(category_df)}")
+                        print("模块列表:")
+                        print(category_df['Module'].unique())
 
-        return result
+            return result
+            
+        except Exception as e:
+            print(f"处理数据时发生错误: {str(e)}")
+            return None
 
     def process_by_category(self, input_csv):
         """

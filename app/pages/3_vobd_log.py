@@ -17,6 +17,7 @@ import streamlit as st
 import sys
 from pathlib import Path
 import os
+import pandas as pd
 
 # 添加项目根目录到 Python 路径，确保可以导入其他模块
 root_dir = Path(__file__).parent.parent.parent
@@ -33,12 +34,6 @@ def main():
     2. 提供文件上传功能
     3. 验证上传的文件
     4. 调用分析和展示功能
-    
-    特点：
-    - 支持多种日志文件格式
-    - 提供文件格式验证
-    - 包含错误处理和用户反馈
-    - 专注于系统诊断信息
     """
     
     # 设置页面标题
@@ -71,6 +66,30 @@ def main():
             # 错误处理和用户反馈
             st.error(f'Error processing file: {str(e)}')
             st.error('Please check if the file is a valid vobd log file.')
+
+def add_daily_stats(df):
+    """Add daily statistics chart"""
+    if 'Time' in df.columns:
+        try:
+            # 创建一个明确的副本
+            df_stats = df.copy()
+            # 在副本上进行操作
+            df_stats['Time'] = pd.to_datetime(df_stats['Time'])
+            df_stats['Date'] = df_stats['Time'].dt.date
+            
+            # 使用处理后的数据
+            daily_counts = df_stats.groupby('Date').size().reset_index()
+            daily_counts.columns = ['Date', 'Count']
+            
+            # 显示图表
+            st.subheader('Daily Log Count Statistics')
+            st.line_chart(daily_counts.set_index('Date'))
+            
+            # 显示详细数据
+            st.subheader('Daily Statistics Details')
+            st.dataframe(daily_counts, use_container_width=True, height=200)
+        except Exception as e:
+            st.error(f'Error processing time data: {str(e)}')
 
 if __name__ == '__main__':
     main() 

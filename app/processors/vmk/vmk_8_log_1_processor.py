@@ -41,21 +41,19 @@ class VMK8LogProcessor:
         # === 基础正则表达式模式定义 ===
         
         # 1. 时间戳模式：匹配 ISO 格式时间
-        # 例如：2025-01-20T01:44:25.919Z
         self.time_pattern = r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)'
         
-        # 2. 日志标签模式：匹配字母和数字组合
-        # 例如：cpu82:10238915
-        self.log_tag_pattern = r'([A-Za-z]+\(\d+\))'
+        # 2. 日志标签模式：匹配所有可能的标签类型
+        self.log_tag_pattern = r'([A-Za-z]{1,3}\(\d+\))'  # 匹配 In(182), Wa(180), Al(177) 等
         
-        # 3. 日志级别模式：匹配 vmkernel 相关标识
-        self.log_level_pattern = r'(vmkernel:)'
+        # 3. 日志级别模式：匹配所有可能的日志级别
+        self.log_level_pattern = r'(vmkernel:|vmkwarning:|vmkalert:)'  # 确保所有级别都带冒号
         
-        # 4. CPU信息模式：匹配 CPU 编号和操作 ID
-        self.cpu_pattern = r'cpu\d+:\d+(?:\s+opID=[a-f0-9]+)?'
+        # 4. CPU信息模式：匹配 CPU 编号和操作 ID，包括可能的 WARNING/ALERT 标记
+        self.cpu_pattern = r'cpu\d+:\d+\)(?:ALERT:\s*)?'  # 修改以包含 ALERT: 并捕获后面的空白
         
-        # 5. 模块名模式：匹配冒号前的内容
-        self.module_pattern = r'([^:]+):'
+        # 5. 模块名模式：修改为更精确地匹配带标记的模块名和函数
+        self.module_pattern = r'(?:(?:<[^>]+>\s+[^:\s]+)(?:(?:[^:]*?(?=:))|$))'
 
     def process_log_line(self, line):
         """
@@ -91,11 +89,18 @@ class VMK8LogProcessor:
         if match:
             # 提取基本信息
             time, log_tag, log_level = match.groups()
+            # 处理日志级别，移除可能的冒号
+            log_level = log_level.rstrip(':')
             result.update({
                 'Time': time,
                 'LogTag': log_tag,
                 'LogLevel': log_level
             })
+            
+            # 调试输出
+            if os.getenv('VMK_DEBUG') == 'true':
+                print(f"LogTag matched: {log_tag}")
+                print(f"LogLevel matched: {log_level}")
             
             # 处理剩余部分
             remaining = line_str[match.end():].strip()
@@ -107,7 +112,7 @@ class VMK8LogProcessor:
 
     def _process_remaining(self, remaining, result):
         """
-        处理日志的剩余部分
+        处理日志的剩余部分，根据日志级别使用不同的处理逻辑
         
         参数：
             remaining (str): 待处理的剩余文本
@@ -118,12 +123,24 @@ class VMK8LogProcessor:
         if cpu_match:
             result['CPU'] = cpu_match.group()
             remaining = remaining[cpu_match.end():].strip()
-        
-        # 匹配模块名
-        module_match = re.match(self.module_pattern, remaining)
-        if module_match:
-            result['Module'] = module_match.group(1)
-            remaining = remaining[module_match.end():].strip()
+            
+            # 根据日志级别选择不同的处理逻辑
+            if result['LogLevel'] in ['vmkwarning', 'vmkalert']:
+                # vmkwarning 和 vmkalert 的处理逻辑
+                # 直接查找尖括号标记和模块名
+                module_match = re.match(r'(?:ALERT:\s*)?(<[^>]+>\s+[^:\s]+(?:(?:[^:]*?(?=:))|$))', remaining)
+                if module_match:
+                    result['Module'] = module_match.group(1).strip()
+                    remaining = remaining[len(module_match.group(0)):].strip()
+                    if remaining.startswith(':'):
+                        remaining = remaining[1:].strip()
+            else:
+                # vmkernel 的处理逻辑
+                # 直接匹配冒号前的内容作为模块名
+                module_match = re.match(r'([^:]+):', remaining)
+                if module_match:
+                    result['Module'] = module_match.group(1).strip()
+                    remaining = remaining[module_match.end():].strip()
         
         # 保存剩余内容为日志消息
         result['Log'] = remaining

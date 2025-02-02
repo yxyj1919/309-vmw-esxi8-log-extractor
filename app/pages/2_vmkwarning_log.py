@@ -14,18 +14,64 @@ VMKWarning Log Analysis Page
 """
 
 import streamlit as st
-import os
 import sys
 from pathlib import Path
+import os
 import pandas as pd
 
-# Add project root directory to Python path
+# 添加项目根目录到 Python 路径，确保可以导入其他模块
 root_dir = Path(__file__).parent.parent.parent
 sys.path.append(str(root_dir))
 
-from app.ui import vmkw_view
+from app.ui.vmkw_view import show
 
-st.set_page_config(page_title="vmkwarning Log", layout="wide")
+def main():
+    """
+    主函数：处理警告日志分析页面的逻辑
+    
+    流程：
+    1. 设置页面标题
+    2. 提供文件上传功能
+    3. 验证上传的文件
+    4. 调用分析和展示功能
+    """
+    
+    # 设置页面标题
+    st.title("vmkwarning Log Analysis")
+    
+    # 添加文件上传功能
+    uploaded_file = st.file_uploader(
+        "Upload vmkwarning log file",
+        type=['log', 'all', 'txt'],  # 允许的文件类型
+        help="Support formats: .log, .all, .txt"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            # 创建临时目录用于存储上传的文件
+            logs_dir = 'logs'
+            os.makedirs(logs_dir, exist_ok=True)
+            
+            # 生成临时文件路径
+            file_path = os.path.join(logs_dir, uploaded_file.name)
+            
+            # 保存上传的文件
+            with open(file_path, 'wb') as f:
+                f.write(uploaded_file.getbuffer())
+            
+            # 在调试模式下设置环境变量
+            if st.session_state.get('debug_mode', False):
+                os.environ['VMK_DEBUG'] = 'true'
+            else:
+                os.environ['VMK_DEBUG'] = 'false'
+            
+            # 使用 vmkw_view.py 显示界面
+            show(file_path)
+            
+        except Exception as e:
+            # 错误处理和用户反馈
+            st.error(f'Error processing file: {str(e)}')
+            st.error('Please check if the file is a valid vmkwarning log file.')
 
 def is_valid_vmkwarning_log(filename):
     """Check if it's a valid vmkwarning log file"""
@@ -35,30 +81,6 @@ def is_valid_vmkwarning_log(filename):
     
     # Check if file extension is .log or .all
     return filename.lower().endswith(('.log', '.all'))
-
-# File upload
-uploaded_file = st.sidebar.file_uploader(
-    "Upload Log File",
-    type=['log', 'all'],  # Allowed file extensions
-    help="Please upload a vmkwarning log file (starting with 'vmkwarning', .log or .all format)"
-)
-
-if uploaded_file is not None:
-    if is_valid_vmkwarning_log(uploaded_file.name):
-        # Save uploaded file
-        logs_dir = 'logs'
-        os.makedirs(logs_dir, exist_ok=True)
-        file_path = os.path.join(logs_dir, uploaded_file.name)
-        
-        with open(file_path, 'wb') as f:
-            f.write(uploaded_file.getvalue())
-        
-        st.sidebar.success(f'File uploaded: {uploaded_file.name}')
-        vmkw_view.show(file_path)
-    else:
-        st.error('Please upload a valid vmkwarning log file (must start with "vmkwarning" and end with .log or .all)')
-else:
-    st.info('Please upload a vmkwarning log file for analysis')
 
 def add_daily_stats(df):
     """Add daily statistics chart"""
@@ -82,4 +104,7 @@ def add_daily_stats(df):
             st.subheader('Daily Statistics Details')
             st.dataframe(daily_counts, use_container_width=True, height=200)
         except Exception as e:
-            st.error(f'Error processing time data: {str(e)}') 
+            st.error(f'Error processing time data: {str(e)}')
+
+if __name__ == '__main__':
+    main() 

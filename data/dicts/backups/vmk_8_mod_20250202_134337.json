@@ -170,8 +170,7 @@
         "vmkusb",
         "vmw_ahci",
         "xhci host controller",
-        "GetNumClientOwnerServers",
-        "MemSchedAdmit"
+        "GetNumClientOwnerServers"
     ],
     "VSAN": [
         "CMMDS",

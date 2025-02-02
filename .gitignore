@@ -22,13 +22,17 @@ env/
 *.sqlite
 *.db
 
-# Output files
+# Project specific directories
 output/
+logs/
+logs/unknown_problems/
 reports/
+
+# Keep directory structure
+!output/.gitkeep
+!logs/.gitkeep
+!logs/unknown_problems/.gitkeep
 
 # System files
 .DS_Store
 Thumbs.db
-
-# 不忽略 output 目录本身（保留空目录）
-!output/.gitkeep
